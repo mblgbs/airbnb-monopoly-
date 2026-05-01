@@ -94,3 +94,10 @@ npm test
 ## Licence
 
 Projet de démonstration / MVP.
+
+## Paiements Stripe (via services-Monopoly-)
+
+- Variable d'environnement requise : `SERVICES_MONOPOLY_BASE_URL` (defaut local `http://127.0.0.1:8004`).
+- `POST /api/reservations` renvoie maintenant une charge utile additive : `{ reservation, paymentLinkUrl }`.
+- `paymentLinkUrl` peut etre `null` si le service paiements est indisponible (fallback MVP).
+- Le proxy de generation de lien est teste dans `lib/payment-links.test.ts`.

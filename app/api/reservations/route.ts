@@ -4,6 +4,9 @@ import { getSession } from "@/lib/auth";
 import { reservationCreateSchema } from "@/lib/validation";
 import { parseUtcDay } from "@/lib/dates";
 import { hasOverlappingReservation } from "@/lib/reservations-db";
+import { createServicesPaymentLink } from "@/lib/payment-links";
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export async function POST(request: Request) {
   try {
@@ -64,7 +67,28 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ reservation }, { status: 201 });
+    let paymentLinkUrl: string | null = null;
+    const nights = Math.round((checkOut.getTime() - checkIn.getTime()) / MS_PER_DAY);
+    const amountHintCents = listing.pricePerNight * nights * 100;
+    try {
+      paymentLinkUrl = await createServicesPaymentLink({
+        app: "airbnb",
+        context: "reservation",
+        referenceId: reservation.id,
+        metadata: {
+          listingId: reservation.listingId,
+          guestId: session.userId,
+          nights,
+          pricePerNight: listing.pricePerNight,
+          amount_cents: amountHintCents,
+        },
+        amountHintCents,
+      });
+    } catch {
+      paymentLinkUrl = null;
+    }
+
+    return NextResponse.json({ reservation, paymentLinkUrl }, { status: 201 });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Erreur serveur";
     return NextResponse.json({ error: message }, { status: 400 });
